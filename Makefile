@@ -27,7 +27,7 @@ SERVER_OBJECTS = $(OBJDIR)/libtslog.o $(OBJDIR)/chat_server.o $(OBJDIR)/server_m
 CLIENT_OBJECTS = $(OBJDIR)/libtslog.o $(OBJDIR)/chat_client.o $(OBJDIR)/client_main.o
 
 # Targets principais
-.PHONY: all clean test help run-test server client run-server run-client run-server-bg test-multiple-clients
+.PHONY: all clean test help run-test server client run-server run-client run-server-bg test-multiple-clients fix-timestamps
 
 all: libtslog test server client
 	@echo ""
@@ -112,6 +112,12 @@ run-client: $(CLIENT_BIN)
 	@echo "================================================"
 	./$(CLIENT_BIN)
 
+# Corrigir timestamps (resolve warning de clock skew)
+fix-timestamps:
+	@echo "Corrigindo timestamps dos arquivos..."
+	@find $(SRCDIR) $(TESTDIR) include -type f -exec touch {} +
+	@echo "✅ Timestamps atualizados! Execute 'make all' agora."
+
 # Limpeza
 clean:
 	@echo "Limpando arquivos compilados..."
@@ -130,6 +136,7 @@ help:
 	@echo "  make run-client           - Inicia um cliente de chat"
 	@echo "  make server               - Compila apenas o servidor"
 	@echo "  make client               - Compila apenas o cliente"
+	@echo "  make fix-timestamps       - Corrige clock skew (timestamps inconsistentes)"
 	@echo "  make clean                - Remove arquivos compilados"
 	@echo "  make help                 - Mostra esta ajuda"
 	@echo ""
@@ -142,8 +149,11 @@ help:
 	@echo "  make run-server-bg && make run-client"
 	@echo "  Para parar o servidor: pkill chat_server"
 	@echo ""
-	@echo "🎯 Teste automatizado:"
+	@echo "�� Teste automatizado:"
 	@echo "  make test-multiple-clients"
+	@echo ""
+	@echo "🔧 Se encontrar 'Clock skew detected':"
+	@echo "  make fix-timestamps && make all"
 	@echo ""
 
 # Dependências
