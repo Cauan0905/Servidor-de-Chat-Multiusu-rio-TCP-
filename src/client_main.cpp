@@ -39,20 +39,36 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
     
     std::string message;
-    while (client.is_connected()) {
-        std::getline(std::cin, message);
-        
-        if (message == "sair" || message == "exit" || message == "quit") {
+    bool should_exit = false;
+    
+    while (!should_exit && client.is_connected()) {
+        if (!std::cin.good()) {
+            std::cout << "\nErro na entrada. Encerrando..." << std::endl;
             break;
         }
         
+        std::getline(std::cin, message);
+        
+        if (message == "sair" || message == "exit" || message == "quit") {
+            std::cout << "\nSaindo..." << std::endl;
+            client.disconnect();
+            std::cout << "Desconectado." << std::endl;
+            return 0;
+        }
+        
         if (!message.empty()) {
-            client.send_message(message);
+            if (!client.send_message(message)) {
+                std::cout << "\nErro ao enviar mensagem. Conexão perdida." << std::endl;
+                break;
+            }
         }
     }
     
-    client.disconnect();
-    std::cout << "\nDesconectado." << std::endl;
+    if (client.is_connected()) {
+        client.disconnect();
+    }
+    
+    std::cout << "Desconectado." << std::endl;
     
     return 0;
 }
