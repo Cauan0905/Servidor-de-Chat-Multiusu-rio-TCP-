@@ -202,6 +202,17 @@ void ChatServer::accept_connections() {
 }
 
 void ChatServer::handle_client(std::shared_ptr<Client> client) {
+    std::string join_notification = "*** " + client->get_id() + " entrou no chat ***\n";
+    auto clients = client_manager_.get_all_clients();
+    for (const auto& other_client : clients) {
+        if (other_client->get_id() != client->get_id()) {
+            other_client->send_message(join_notification);
+        }
+    }
+    LOG_INFO("Notificação de entrada enviada para outros clientes");
+    
+    send_history_to_client(client);
+    
     char buffer[4096];
     
     while (is_running_ && client->is_connected()) {
@@ -210,6 +221,16 @@ void ChatServer::handle_client(std::shared_ptr<Client> client) {
         
         if (bytes_received <= 0) {
             LOG_INFO("Cliente desconectado: " + client->get_id());
+            
+            std::string leave_notification = "*** " + client->get_id() + " saiu do chat ***\n";
+            auto remaining_clients = client_manager_.get_all_clients();
+            for (const auto& other_client : remaining_clients) {
+                if (other_client->get_id() != client->get_id()) {
+                    other_client->send_message(leave_notification);
+                }
+            }
+            LOG_INFO("Notificação de saída enviada para outros clientes");
+            
             client->disconnect();
             client_manager_.remove_client(client->get_id());
             break;
@@ -225,6 +246,31 @@ void ChatServer::handle_client(std::shared_ptr<Client> client) {
         // Broadcast para todos os clientes
         broadcast_message(message, client->get_id());
     }
+}
+
+void ChatServer::send_history_to_client(std::shared_ptr<Client> client) {
+    auto recent_messages = message_history_.get_recent_messages(50);
+    
+    if (recent_messages.empty()) {
+        std::string welcome_msg = "=== Bem-vindo ao Chat! Você é o primeiro aqui. ===\n";
+        client->send_message(welcome_msg);
+        return;
+    }
+    
+    std::string header = "=== Histórico de Mensagens (últimas " + 
+                        std::to_string(recent_messages.size()) + " mensagens) ===\n";
+    client->send_message(header);
+    
+    for (const auto& message : recent_messages) {
+        std::string formatted_message = "[" + message.sender_id + "]: " + message.content + "\n";
+        client->send_message(formatted_message);
+    }
+    
+    std::string footer = "=== Fim do Histórico ===\n";
+    client->send_message(footer);
+    
+    LOG_INFO("Histórico enviado para " + client->get_id() + " (" + 
+             std::to_string(recent_messages.size()) + " mensagens)");
 }
 
 void ChatServer::broadcast_message(const Message& message, const std::string& sender_id) {
